@@ -1,8 +1,8 @@
 package azureappconfig
 
 import (
-	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os/exec"
 
@@ -41,7 +41,7 @@ func resourceConfigurationSetting() *schema.Resource {
 			"label": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
-			}
+			},
 		},
 	}
 }
@@ -66,55 +66,92 @@ func do(event string, d *schema.ResourceData, m interface{}) error {
 	log.Printf("Executing: %s %s %s %s", d.Get("config_name"), d.Get("key"), event, d.Get("value"))
 
 	if event == "create" {
-		azureCommand := fmt.Sprintf("az appconfig kv set -n %s --key %s --value %s --label %s --yes",
-									d.Get("config_name"),
-									d.Get("key"),
-									d.Get("value"),
-									d.Get("label")
-								)
-		
+		azureCommand := fmt.Sprintf("az appconfig kv set -n %s --key %s --value %s --label %s --yes", d.Get("config_name"), d.Get("key"), d.Get("value"), d.Get("label"))
 		cmd := exec.Command("bash", "-c", azureCommand)
+
+		result, err := cmd.Output()
+
+		if err == nil {
+			var resource map[string]interface{}
+			err = json.Unmarshal([]byte(result), &resource)
+			if err == nil {
+				if event == "delete" {
+					d.SetId("")
+				} else {
+					key := d.Get("id_key").(string)
+					d.Set("resource", resource)
+					d.SetId(resource[key].(string))
+				}
+			}
+		}
+		return err
 	}
-	
+
 	if event == "read" {
 		azureCommand := fmt.Sprintf("az appconfig kv list --all")
 		cmd := exec.Command("bash", "-c", azureCommand)
+
+		result, err := cmd.Output()
+
+		if err == nil {
+			var resource map[string]interface{}
+			err = json.Unmarshal([]byte(result), &resource)
+			if err == nil {
+				if event == "delete" {
+					d.SetId("")
+				} else {
+					key := d.Get("id_key").(string)
+					d.Set("resource", resource)
+					d.SetId(resource[key].(string))
+				}
+			}
+		}
+		return err
 	}
 
 	if event == "update" {
-		azureCommand := fmt.Sprintf("az appconfig kv set -n %s --key %s --value %s --label %s --yes",
-									d.Get("config_name"),
-									d.Get("key"),
-									d.Get("value"),
-									d.Get("label")
-								)
-		
+		azureCommand := fmt.Sprintf("az appconfig kv set -n %s --key %s --value %s --label %s --yes", d.Get("config_name"), d.Get("key"), d.Get("value"), d.Get("label"))
 		cmd := exec.Command("bash", "-c", azureCommand)
+
+		result, err := cmd.Output()
+
+		if err == nil {
+			var resource map[string]interface{}
+			err = json.Unmarshal([]byte(result), &resource)
+			if err == nil {
+				if event == "delete" {
+					d.SetId("")
+				} else {
+					key := d.Get("id_key").(string)
+					d.Set("resource", resource)
+					d.SetId(resource[key].(string))
+				}
+			}
+		}
+		return err
+
 	}
 
 	if event == "delete" {
-		azureCommand := fmt.Sprintf("az appconfig kv delete --key %s", d.Get("key") )
+		azureCommand := fmt.Sprintf("az appconfig kv delete --key %s", d.Get("key"))
 		cmd := exec.Command("bash", "-c", azureCommand)
-		cmd.Stdin = bytes.NewReader([]byte(d.Id()))
-	} else {
-		cmd.Stdin = bytes.NewReader([]byte(d.Get("data").(string)))
-	}
 
-	result, err := cmd.Output()
+		result, err := cmd.Output()
 
-	if err == nil {
-		var resource map[string]interface{}
-		err = json.Unmarshal([]byte(result), &resource)
 		if err == nil {
-			if event == "delete" {
-				d.SetId("")
-			} else {
-				key := d.Get("id_key").(string)
-				d.Set("resource", resource)
-				d.SetId(resource[key].(string))
+			var resource map[string]interface{}
+			err = json.Unmarshal([]byte(result), &resource)
+			if err == nil {
+				if event == "delete" {
+					d.SetId("")
+				} else {
+					key := d.Get("id_key").(string)
+					d.Set("resource", resource)
+					d.SetId(resource[key].(string))
+				}
 			}
 		}
+		return err
 	}
-
-	return err
+	return nil
 }
